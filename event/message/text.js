@@ -1,11 +1,11 @@
 import { JsonDB } from 'node-json-db';
 import { Config } from 'node-json-db/dist/lib/JsonDBConfig.js';
 
-const { userId } = event.source;
 
 // テキストメッセージの処理をする関数
 export const textEvent = async (event, client) => {
   let message;
+  const { userId } = event.source;
   // メッセージのテキストごとに条件分岐
   switch (event.message.text) {
 
