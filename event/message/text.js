@@ -1,6 +1,8 @@
 import { JsonDB } from 'node-json-db';
 import { Config } from 'node-json-db/dist/lib/JsonDBConfig.js';
 
+const myDB = new JsonDB(new Config('db/memberDB.json', true, true, '/'));
+
 const { userId } = event.source;
 
 // テキストメッセージの処理をする関数
