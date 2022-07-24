@@ -50,47 +50,6 @@ export const textEvent = async (event, client) => {
       break;
     }
 
-    case 'メンバーの設定': {
-      // 返信するメッセージを作成
-      message = {
-        type: 'text',
-        text: 'メンバーの設定を行います。',
-        quickReply: {
-          items: [
-            {
-              type: 'action',
-              action: {
-                type: 'camera',
-                label: 'メンバーの追加',
-              },
-            },
-            {
-              type: 'action',
-              action: {
-                type: 'cameraRoll',
-                label: 'メンバーの削除',
-              },
-            },
-            {
-              type: 'action',
-              action: {
-                type: 'location',
-                label: 'メンバーの編集',
-              },
-            },
-            {
-              type: 'action',
-              action: {
-                type: 'location',
-                label: 'メンバーの一覧',
-              },
-            },
-          ],
-        },
-      };
-      break;
-    }
-
 
     //イベントの設定
     case 'イベントの設定': {
@@ -132,6 +91,47 @@ export const textEvent = async (event, client) => {
               action: {
                 type: 'location',
                 label: 'イベントの通知',
+              },
+            },
+          ],
+        },
+      };
+      break;
+    }
+
+    case 'メンバーの設定': {
+      // 返信するメッセージを作成
+      message = {
+        type: 'text',
+        text: 'メンバーの設定を行います。',
+        quickReply: {
+          items: [
+            {
+              type: 'action',
+              action: {
+                type: 'camera',
+                label: 'メンバーの追加',
+              },
+            },
+            {
+              type: 'action',
+              action: {
+                type: 'cameraRoll',
+                label: 'メンバーの削除',
+              },
+            },
+            {
+              type: 'action',
+              action: {
+                type: 'location',
+                label: 'メンバーの編集',
+              },
+            },
+            {
+              type: 'action',
+              action: {
+                type: 'location',
+                label: 'メンバーの一覧',
               },
             },
           ],
