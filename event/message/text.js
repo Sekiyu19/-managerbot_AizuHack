@@ -5,8 +5,8 @@ export const textEvent = async (event, client) => {
   switch (event.message.text) {
 
 
+    //最初の設定画面
     case '日程調整': {
-      // 返信するメッセージを作成
       message = {
         type: 'template',
         altText: 'ボタンテンプレート',
@@ -43,6 +43,55 @@ export const textEvent = async (event, client) => {
               type: 'message',
               label: 'その他設定',
               text: 'その他の設定',
+            },
+          ],
+        },
+      };
+      break;
+    }
+
+
+    //イベントの設定
+    case 'イベントの設定': {
+      message = {
+        type: 'text',
+        text: 'クイックリプライ（以下のアクションはクイックリプライ専用で、他のメッセージタイプでは使用できません）',
+        quickReply: {
+          items: [
+            {
+              type: 'action',
+              action: {
+                type: 'camera',
+                label: 'イベントの追加',
+              },
+            },
+            {
+              type: 'action',
+              action: {
+                type: 'cameraRoll',
+                label: 'イベントの削除',
+              },
+            },
+            {
+              type: 'action',
+              action: {
+                type: 'location',
+                label: 'イベントの編集',
+              },
+            },
+            {
+              type: 'action',
+              action: {
+                type: 'location',
+                label: 'イベントの一覧',
+              },
+            },
+            {
+              type: 'action',
+              action: {
+                type: 'location',
+                label: 'イベントの通知',
+              },
             },
           ],
         },
