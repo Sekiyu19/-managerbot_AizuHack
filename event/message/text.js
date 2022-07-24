@@ -27,22 +27,22 @@ export const textEvent = async (event, client) => {
             {
               type: 'message',
               label: 'イベントの設定',
-              text: 'button-message',
+              text: 'イベントの設定',
             },
             {
               type: 'message',
               label: 'メンバーの設定',
-              text: 'button-message',
+              text: 'メンバーの設定',
             },
             {
               type: 'message',
               label: 'テンプレートの設定',
-              text: 'button-message',
+              text: 'テンプレートの設定',
             },
             {
               type: 'message',
               label: 'その他設定',
-              text: 'button-message',
+              text: 'その他の設定',
             },
           ],
         },
