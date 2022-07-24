@@ -3,6 +3,56 @@ export const textEvent = async (event, client) => {
   let message;
   // メッセージのテキストごとに条件分岐
   switch (event.message.text) {
+
+
+    case '日程調整': {
+      // 返信するメッセージを作成
+      message = {
+        type: 'template',
+        altText: 'ボタンテンプレート',
+        template: {
+          type: 'buttons',
+          thumbnailImageUrl: 'https://shinbunbun.info/images/photos/7.jpeg',
+          imageAspectRatio: 'rectangle',
+          imageSize: 'cover',
+          imageBackgroundColor: '#FFFFFF',
+          title: '日程調整',
+          text: '各種設定',
+          defaultAction: {
+            type: 'uri',
+            label: 'View detail',
+            uri: 'https://shinbunbun.info/images/photos/',
+          },
+          actions: [
+            {
+              type: 'message',
+              label: 'イベントの設定',
+              text: 'button-message',
+            },
+            {
+              type: 'message',
+              label: 'メンバーの設定',
+              text: 'button-message',
+            },
+            {
+              type: 'message',
+              label: 'テンプレートの設定',
+              text: 'button-message',
+            },
+            {
+              type: 'message',
+              label: 'その他設定',
+              text: 'button-message',
+            },
+          ],
+        },
+      };
+      break;
+    }
+
+
+
+
     // 'こんにちは'というメッセージが送られてきた時
     case 'こんにちは': {
       // 返信するメッセージを作成
