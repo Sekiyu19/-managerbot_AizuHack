@@ -3,11 +3,11 @@ import { Config } from 'node-json-db/dist/lib/JsonDBConfig.js';
 
 const myDB = new JsonDB(new Config('db/memberDB.json', true, true, '/'));
 
-const { userId } = event.source;
 
 // テキストメッセージの処理をする関数
 export const textEvent = async (event, client) => {
   let message;
+  const { userId } = event.source;
   // メッセージのテキストごとに条件分岐
   switch (event.message.text) {
 
@@ -116,8 +116,9 @@ export const textEvent = async (event, client) => {
             {
               type: 'action',
               action: {
-                type: 'camera',
-                label: 'メンバーの追加',
+                type: 'message',
+                label: 'メンバーの名前を入力してください',
+                text: 'メンバーの名前を入力してください',
               },
             },
             {
