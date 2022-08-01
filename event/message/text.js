@@ -1,16 +1,60 @@
 import { JsonDB } from 'node-json-db';
 import { Config } from 'node-json-db/dist/lib/JsonDBConfig.js';
 
-const { userId } = event.source;
+const eventContextDB = new JsonDB(new Config('db/eventContextDB.json', true, true, '/'));
+const eventMessageDB = new JsonDB(new Config('db/eventMessageDB.json', true, true, '/'));
+let count = 1;
 
 // テキストメッセージの処理をする関数
 export const textEvent = async (event, client) => {
   let message;
+  const { userId } = event.source;
+  let eventContextData;
+  let eventMemoData;
+  try {
+    eventContextData = eventContextDB.getData(`/${userId}/context`);
+  } catch (_) {
+    eventContextData = undefined;
+  }
+  try {
+    eventMemoData = eventMessageDB.getData(`/${userId}/event/${count}`);
+  } catch (_) {
+    eventMemoData = undefined;
+  }
+
+  // contextDataで条件分岐
+  switch (eventContextData) {
+    // もしそのユーザーのcontextがmemoModeだったら
+    case 'eventMemoMode': {
+      // すでに保存されているメモがDBにある場合
+      if (eventMemoData) {
+        // すでにあるmemoカラムに新しいメッセージを追加する
+        // eventMemoData.push(`${event.message.text}`);
+        // メッセージをDBへ保存
+        eventMessageDB.push(`/${userId}/event/${++count}`, event.message.text);
+      } else {
+        // memoカラムを作成してDBに保存
+        eventMessageDB.push(`/${userId}/event/1`, event.message.text);
+      }
+      // contextをDBから削除
+      eventContextDB.delete(`/${userId}/context`);
+      // 返信するメッセージをreturnする
+      return {
+        type: 'text',
+        text: `"${event.message.text}"というイベントをdbに追加しました`,
+      };
+    }
+    default:
+      break;
+    case 'eventRemMode': {
+      console.log(1111111);
+      eventMessageDB.delete(`/${userId}/event/${event.message.text}`);
+      eventContextDB.delete(`/${userId}/context`);
+    }
+  }
   // メッセージのテキストごとに条件分岐
   switch (event.message.text) {
-
-
-    //最初の設定画面
+    // 最初の設定画面
     case '日程調整': {
       message = {
         type: 'template',
@@ -55,52 +99,115 @@ export const textEvent = async (event, client) => {
       break;
     }
 
-
-    //イベントの設定
+    // イベントの設定
     case 'イベントの設定': {
       message = {
         type: 'text',
-        text: 'クイックリプライ（以下のアクションはクイックリプライ専用で、他のメッセージタイプでは使用できません）',
+        text: 'イベントの操作を選んでください',
         quickReply: {
           items: [
             {
               type: 'action',
               action: {
-                type: 'camera',
+                type: 'message',
+                text: 'イベントの追加',
                 label: 'イベントの追加',
               },
             },
             {
               type: 'action',
               action: {
-                type: 'cameraRoll',
+                type: 'message',
+                text: 'イベントの削除',
                 label: 'イベントの削除',
               },
             },
             {
               type: 'action',
               action: {
-                type: 'location',
+                type: 'message',
+                text: 'イベントの編集',
                 label: 'イベントの編集',
               },
             },
             {
               type: 'action',
               action: {
-                type: 'location',
+                type: 'message',
+                text: 'イベントの一覧',
                 label: 'イベントの一覧',
               },
             },
             {
               type: 'action',
               action: {
-                type: 'location',
+                type: 'message',
+                text: 'イベントの通知',
                 label: 'イベントの通知',
               },
             },
           ],
         },
       };
+      break;
+    }
+
+    case 'イベントの一覧': {
+      // メモのデータがDBに存在する時
+      if (eventMemoData) {
+        let event;
+        let Data = null;
+        // 返信するメッセージを作成
+        message = {
+          type: 'text',
+          text: '以下のイベントが保存されています\n',
+        };
+        for (let i = 1; i <= 3; i++) {
+          try {
+            event = eventMessageDB.getData(`/${userId}/event/${i}`);
+          } catch (_) {
+            eventMessageDB.push(`/${userId}/event/${i}`, 'なし');
+          }
+          if (i == 1) {
+            Data = eventMessageDB.getData(`/${userId}/event/${i}`);
+          } else {
+            Data += `\n${eventMessageDB.getData(`/${userId}/event/${i}`)}`;
+          }
+        }
+        message = {
+          type: 'text',
+          text: Data,
+        };
+      } else {
+        // 返信するメッセージを作成
+        message = {
+          type: 'text',
+          text: 'イベントが存在しません',
+        };
+      }
+      break;
+    }
+    // 'イベントの追加'というメッセージが送られてきた時
+    case 'イベントの追加': {
+      // DBにcontextを追加
+      eventContextDB.push(`/${userId}/context`, 'eventMemoMode');
+      // 返信するメッセージを作成
+      message = {
+        type: 'text',
+        text: 'イベントを入力してください',
+      };
+      break;
+    }
+    case 'イベントの削除': {
+      eventMessageDB.delete(`/${userId}/event/2`);
+      eventContextDB.push(`/${userId}/context`, 'eventRemMode');
+      // まだまだまだまだたまだまだまだまだまだ
+      message = {
+        type: 'text',
+        text: 'イベントを削除しました',
+      };
+      // eslint-disable-next-line no-const-assign
+      // count = 1;
       break;
     }
 
@@ -143,12 +250,7 @@ export const textEvent = async (event, client) => {
         },
       };
       break;
-    }
-
-
-
-
-    // 'こんにちは'というメッセージが送られてきた時
+    }// 'こんにちは'というメッセージが送られてきた時
     case 'こんにちは': {
       // 返信するメッセージを作成
       message = {
