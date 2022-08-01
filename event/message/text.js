@@ -1,15 +1,149 @@
 import { JsonDB } from 'node-json-db';
 import { Config } from 'node-json-db/dist/lib/JsonDBConfig.js';
 
-const myDB = new JsonDB(new Config('db/memberDB.json', true, true, '/'));
+const memberDB = new JsonDB(new Config('db/memberDB.json', true, true, '/'));
+const contextDB = new JsonDB(new Config('db/contextDB.json', true, true, '/'));
+const messageDB = new JsonDB(new Config('db/messageDB.json', true, true, '/'));
+let count = 1;
 
+const isGroup = (event) => {
+  return event.source.type == "group";
+}
 
 // テキストメッセージの処理をする関数
 export const textEvent = async (event, client) => {
   let message;
-  const { userId } = event.source;
+  let { userId } = event.source;
+  if (isGroup(event)) {
+    userId = event.source.groupId;
+  }
+  // DBからユーザーのデータを取得
+  let contextData;
+  let memoData;
+  let memberData;
+  try {
+    contextData = contextDB.getData(`/${userId}/context`);
+  } catch (_) {
+    contextData = undefined;
+  }
+  try {
+    memoData = messageDB.getData(`/${userId}/memo`);
+  } catch (_) {
+    memoData = undefined;
+  }
+  try {
+    memberData = memberDB.getData(`/${userId}/member`);
+  } catch (_) {
+    memberData = undefined;
+  }
+
+  // contextDataで条件分岐
+  switch (contextData) {
+    // もしそのユーザーのcontextがmemoModeだったら
+    case 'memoMode': {
+      // すでに保存されているメモがDBにある場合
+      if (memoData) {
+        // すでにあるmemoカラムに新しいメッセージを追加する
+        memoData.push(`\n${event.message.text}`);
+        // メッセージをDBへ保存
+        messageDB.push(`/${userId}/memo`, memoData);
+      } else {
+        // memoカラムを作成してDBに保存
+        messageDB.push(`/${userId}/memo`, [event.message.text]);
+      }
+      // contextをDBから削除
+      contextDB.delete(`/${userId}/context`);
+      // 返信するメッセージをreturnする
+      return {
+        type: 'text',
+        text: `${event.message.text}というメッセージをdbに追加しました`,
+      };
+    }
+    case 'addMember': {
+      // すでに保存されているメモがDBにある場合
+      if (memberData) {
+        // // すでにあるmemoカラムに新しいメッセージを追加する
+        // memberData.push({ id: `${event.message.text}`, name: `${event.message.text}`, position: `${event.message.text}` });
+        // // メッセージをDBへ保存
+        // memberDB.push(`/${userId}/member/${count++}`, memberData);
+        memberDB.push(`/${userId}/member/${count++}`, `${event.message.text}`, false);
+      } else {
+        // memoカラムを作成してDBに保存
+        memberDB.push(`/${userId}/member/${count++}`, { id: 1, name: `${event.message.text}` }, false);
+        // memberDB.push(`/${userId}/member/`, [`\n${event.message.text} さん`]);
+      }
+      // contextをDBから削除
+      contextDB.delete(`/${userId}/context`);
+      // 返信するメッセージをreturnする
+      return {
+        type: 'text',
+        text: `${event.message.text}さんをメンバーに追加しました。`,
+      };
+    }
+    case 'deleteMember': {
+      memberDB.delete(`/${userId}/member/${event.message.text}`);
+      contextDB.delete(`/${userId}/context`);
+      return {
+        type: 'text',
+        text: `${event.message.text}さんをメンバーから削除しました。`,
+      };
+    }
+    default:
+      break;
+  }
   // メッセージのテキストごとに条件分岐
   switch (event.message.text) {
+
+    // 'メモ'というメッセージが送られてきた時
+    case 'メモ': {
+      // メモのデータがDBに存在する時
+      if (memoData) {
+        // 返信するメッセージを作成
+        message = {
+          type: 'text',
+          text: `メモには以下のメッセージが保存されています\n\n${memoData}`,
+        };
+      } else {
+        // 返信するメッセージを作成
+        message = {
+          type: 'text',
+          text: 'メモが存在しません',
+        };
+      }
+      break;
+    }
+    // 'メモ開始'というメッセージが送られてきた時
+    case 'メモ開始': {
+      // DBにcontextを追加
+      contextDB.push(`/${userId}/context`, 'memoMode');
+      // 返信するメッセージを作成
+      message = {
+        type: 'text',
+        text: 'メモモードを開始しました',
+      };
+      break;
+    }
+
+    // 'Read'というメッセージが送られてきた時
+    case 'Read': {
+      // DBにtestDataが存在しているかをチェック
+      try {
+        // DBからデータを取得（データがない場合は例外が投げられるのでcatchブロックに入る）
+        const dbData = memberDB.getData(`/${userId}/testData`);
+        // 返信するメッセージを作成
+        message = {
+          type: 'text',
+          text: `DBには以下のデータが保存されています\n\n${JSON.stringify(dbData)}`,
+        };
+      } catch (_) {
+        // 返信するメッセージを作成
+        message = {
+          type: 'text',
+          text: 'DBにデータが保存されていません',
+        };
+      }
+      break;
+    }
 
 
     //最初の設定画面
@@ -117,29 +251,32 @@ export const textEvent = async (event, client) => {
               type: 'action',
               action: {
                 type: 'message',
-                label: 'メンバーの名前を入力してください',
-                text: 'メンバーの名前を入力してください',
+                text: 'メンバーの追加',
+                label: 'メンバーの追加',
               },
             },
             {
               type: 'action',
               action: {
-                type: 'cameraRoll',
+                type: 'message',
                 label: 'メンバーの削除',
+                text: 'メンバーの削除',
               },
             },
             {
               type: 'action',
               action: {
-                type: 'location',
+                type: 'message',
                 label: 'メンバーの編集',
+                text: 'メンバーの編集',
               },
             },
             {
               type: 'action',
               action: {
-                type: 'location',
+                type: 'message',
                 label: 'メンバーの一覧',
+                text: 'メンバーの一覧',
               },
             },
           ],
@@ -148,8 +285,64 @@ export const textEvent = async (event, client) => {
       break;
     }
 
+    case 'メンバーの追加': {
+      contextDB.push(`/${userId}/context`, 'addMember');
+      // 返信するメッセージを作成
+      message = {
+        type: 'text',
+        text: '追加するメンバーの名前を入力してください',
+      };
+      break;
+    }
 
+    case 'メンバーの削除': {
+      contextDB.push(`/${userId}/context`, 'deleteMember');
+      // 返信するメッセージを作成
+      message = {
+        type: 'text',
+        text: '削除するメンバーの名前を入力してください',
+      };
+      break;
+    }
 
+    case '削除': {
+      memberDB.delete(`/`);
+      count = 1;
+      break;
+    }
+
+    case 'メンバーの一覧': {
+      if (memberData) {
+        // 返信するメッセージを作成
+        let member;
+        let Data;
+        for (let i = 1; i <= 3; i++) {
+          try {
+            member = memberDB.getData(`/${userId}/member/${i}/id`);
+          } catch (_) {
+            member = undefined;
+          }
+          if (member) {
+            if (i == 1) {
+              Data = member + " さん";
+            } else {
+              Data += "\n" + member + " さん";
+            }
+          }
+        }
+        message = {
+          type: 'text',
+          text: `日程調整Botには以下のメンバーが登録されています。\n${Data}`,
+        };
+      } else {
+        // 返信するメッセージを作成
+        message = {
+          type: 'text',
+          text: 'メンバーが存在しません',
+        };
+      }
+      break;
+    }
 
     // 'こんにちは'というメッセージが送られてきた時
     case 'こんにちは': {
@@ -580,7 +773,7 @@ export const textEvent = async (event, client) => {
       // 返信するメッセージを作成
       message = {
         type: 'text',
-        text: `あなたの名前: ${profile.displayName}\nユーザーID: ${profile.userId}\nプロフィール画像のURL: ${profile.pictureUrl}\nステータスメッセージ: ${profile.statusMessage}`,
+        text: `あなたの名前: ${profile.displayName} \nユーザーID: ${profile.userId} \nプロフィール画像のURL: ${profile.pictureUrl} \nステータスメッセージ: ${profile.statusMessage} `,
       };
       break;
     }
@@ -608,10 +801,11 @@ export const textEvent = async (event, client) => {
       // 返信するメッセージを作成
       message = {
         type: 'text',
-        text: `受け取ったメッセージ: ${event.message.text}\nそのメッセージの返信には対応してません...`,
+        text: `受け取ったメッセージ: ${event.message.text} \nそのメッセージの返信には対応してません...`,
       };
       break;
     }
   }
   return message;
 };
+
