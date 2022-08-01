@@ -10,6 +10,7 @@ const isGroup = (event) => {
   return event.source.type == "group";
 }
 
+
 // テキストメッセージの処理をする関数
 export const textEvent = async (event, client) => {
   let message;
@@ -191,52 +192,115 @@ export const textEvent = async (event, client) => {
       break;
     }
 
-
-    //イベントの設定
+    // イベントの設定
     case 'イベントの設定': {
       message = {
         type: 'text',
-        text: 'クイックリプライ（以下のアクションはクイックリプライ専用で、他のメッセージタイプでは使用できません）',
+        text: 'イベントの操作を選んでください',
         quickReply: {
           items: [
             {
               type: 'action',
               action: {
-                type: 'camera',
+                type: 'message',
+                text: 'イベントの追加',
                 label: 'イベントの追加',
               },
             },
             {
               type: 'action',
               action: {
-                type: 'cameraRoll',
+                type: 'message',
+                text: 'イベントの削除',
                 label: 'イベントの削除',
               },
             },
             {
               type: 'action',
               action: {
-                type: 'location',
+                type: 'message',
+                text: 'イベントの編集',
                 label: 'イベントの編集',
               },
             },
             {
               type: 'action',
               action: {
-                type: 'location',
+                type: 'message',
+                text: 'イベントの一覧',
                 label: 'イベントの一覧',
               },
             },
             {
               type: 'action',
               action: {
-                type: 'location',
+                type: 'message',
+                text: 'イベントの通知',
                 label: 'イベントの通知',
               },
             },
           ],
         },
       };
+      break;
+    }
+
+    case 'イベントの一覧': {
+      // メモのデータがDBに存在する時
+      if (eventMemoData) {
+        let event;
+        let Data = null;
+        // 返信するメッセージを作成
+        message = {
+          type: 'text',
+          text: '以下のイベントが保存されています\n',
+        };
+        for (let i = 1; i <= 3; i++) {
+          try {
+            event = eventMessageDB.getData(`/${userId}/event/${i}`);
+          } catch (_) {
+            eventMessageDB.push(`/${userId}/event/${i}`, 'なし');
+          }
+          if (i == 1) {
+            Data = eventMessageDB.getData(`/${userId}/event/${i}`);
+          } else {
+            Data += `\n${eventMessageDB.getData(`/${userId}/event/${i}`)}`;
+          }
+        }
+        message = {
+          type: 'text',
+          text: Data,
+        };
+      } else {
+        // 返信するメッセージを作成
+        message = {
+          type: 'text',
+          text: 'イベントが存在しません',
+        };
+      }
+      break;
+    }
+    // 'イベントの追加'というメッセージが送られてきた時
+    case 'イベントの追加': {
+      // DBにcontextを追加
+      eventContextDB.push(`/${userId}/context`, 'eventMemoMode');
+      // 返信するメッセージを作成
+      message = {
+        type: 'text',
+        text: 'イベントを入力してください',
+      };
+      break;
+    }
+    case 'イベントの削除': {
+      eventMessageDB.delete(`/${userId}/event/2`);
+      eventContextDB.push(`/${userId}/context`, 'eventRemMode');
+      // まだまだまだまだたまだまだまだまだまだ
+      message = {
+        type: 'text',
+        text: 'イベントを削除しました',
+      };
+      // eslint-disable-next-line no-const-assign
+      // count = 1;
       break;
     }
 
