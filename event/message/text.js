@@ -4,8 +4,6 @@ import { Config } from 'node-json-db/dist/lib/JsonDBConfig.js';
 const eventDB = new JsonDB(new Config('db/eventMessageDB.json', true, true, '/'));
 const memberDB = new JsonDB(new Config('db/memberDB.json', true, true, '/'));
 const contextDB = new JsonDB(new Config('db/contextDB.json', true, true, '/'));
-// const messageDB = new JsonDB(new Config('db/messageDB.json', true, true, '/'));
-const eventDB = new JsonDB(new Config('db/eventMessageDB.json', true, true, '/'));
 let count = 1;
 
 let eventName;
@@ -33,16 +31,6 @@ export const textEvent = async (event, client) => {
   } catch (_) {
     contextData = undefined;
   }
-  // try {
-  //   memoData = eventDB.getData(`/${userId}/event/`);
-  // } catch (_) {
-  //   memoData = undefined;
-  // }
-  // try {
-  //   memoData = messageDB.getData(`/${userId}/memo`);
-  // } catch (_) {
-  //   memoData = undefined;
-  // }
   try {
     memberData = memberDB.getData(`/${userId}/member`);
   } catch (_) {
@@ -228,55 +216,6 @@ export const textEvent = async (event, client) => {
   // メッセージのテキストごとに条件分岐
   switch (event.message.text) {
     // 'メモ'というメッセージが送られてきた時
-    case 'メモ': {
-      // メモのデータがDBに存在する時
-      if (memoData) {
-        // 返信するメッセージを作成
-        message = {
-          type: 'text',
-          text: `メモには以下のメッセージが保存されています\n\n${memoData}`,
-        };
-      } else {
-        // 返信するメッセージを作成
-        message = {
-          type: 'text',
-          text: 'メモが存在しません',
-        };
-      }
-      break;
-    }
-    // 'メモ開始'というメッセージが送られてきた時
-    case 'メモ開始': {
-      // DBにcontextを追加
-      contextDB.push(`/${userId}/context`, 'memoMode');
-      // 返信するメッセージを作成
-      message = {
-        type: 'text',
-        text: 'メモモードを開始しました',
-      };
-      break;
-    }
-
-    // 'Read'というメッセージが送られてきた時
-    case 'Read': {
-      // DBにtestDataが存在しているかをチェック
-      try {
-        // DBからデータを取得（データがない場合は例外が投げられるのでcatchブロックに入る）
-        const dbData = memberDB.getData(`/${userId}/testData`);
-        // 返信するメッセージを作成
-        message = {
-          type: 'text',
-          text: `DBには以下のデータが保存されています\n\n${JSON.stringify(dbData)}`,
-        };
-      } catch (_) {
-        // 返信するメッセージを作成
-        message = {
-          type: 'text',
-          text: 'DBにデータが保存されていません',
-        };
-      }
-      break;
-    }
 
     // 最初の設定画面
     case '日程調整': {
