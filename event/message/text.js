@@ -96,9 +96,8 @@ export const textEvent = async (event, client) => {
       contextDB.delete(`/${userId}/context`);
       const memberNum = 30;
       for (let i = 1; i < memberNum; i++) {
-        const dateTmp = memberDB.getData(`/${userId}/member/${i}/date`);
-        for (let j = 1; j < dateTmp.length; j++) {
-          if (dateTmp === eventDate) { activeMember.push(memberDB.getData(`/${userId}/member/${i}/name`)); }
+        for (let j = 1; j < dateNum; j++) {
+          if (memberDB.getData(memberDB.getData(`/${userId}/member/${i}/${j}`)) === eventDate) { activeMember.push(memberDB.getData(`/${userId}/member/${i}/name`)); }
         }
       }
       eventInfo = `${eventDate}日: 「${eventName}」\n${activeMember}`;
