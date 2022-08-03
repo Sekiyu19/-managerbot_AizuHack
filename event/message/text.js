@@ -20,18 +20,18 @@ export const textEvent = async (event, client) => {
   }
   // テキストメッセージの処理をする関数
   let contextData;
-  let memoData;
   let memberData;
+  let eventMemoData
   try {
     contextData = contextDB.getData(`/${userId}/context`);
   } catch (_) {
     contextData = undefined;
   }
-  // try {
-  //   memoData = eventDB.getData(`/${userId}/event/`);
-  // } catch (_) {
-  //   memoData = undefined;
-  // }
+  try {
+    eventMemoData = eventDB.getData(`/${userId}/event/`);
+  } catch (_) {
+    eventMemoData = undefined;
+  }
   // try {
   //   memoData = messageDB.getData(`/${userId}/memo`);
   // } catch (_) {
