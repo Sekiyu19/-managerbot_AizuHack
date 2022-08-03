@@ -14,10 +14,8 @@ let memberName;
 let memberId;
 
 const isGroup = (event) => {
-  return event.source.type == "group";
+  return event.source.type === "group";
 }
-
-const isGroup = (event) => event.source.type === 'group';
 
 // テキストメッセージの処理をする関数
 export const textEvent = async (event, client) => {
@@ -179,6 +177,51 @@ export const textEvent = async (event, client) => {
           text: `IDが${event.message.text}のメンバーは存在しません。`,
         };
       }
+    }
+    case 'getMemberId': {
+      memberId = `${event.message.text}`;
+      contextDB.delete(`/${userId}/context`);
+      message = {
+        type: 'text',
+        text: 'メンバーの参加可能日の設定を行います。',
+        quickReply: {
+          items: [
+            {
+              type: 'action',
+              action: {
+                type: 'message',
+                label: '追加',
+                text: '参加可能日追加',
+              },
+            },
+            {
+              type: 'action',
+              action: {
+                type: 'message',
+                label: '削除',
+                text: '参加可能日削除',
+              },
+            },
+          ],
+        },
+      };
+      return message;
+    }
+    case 'addavailabledate': {
+      memberDB.push(`/${userId}/member/${memberId}/availabledate/${event.message.text}`, { date: `${event.message.text}` }, false);
+      contextDB.delete(`/${userId}/context`);
+      return {
+        type: 'text',
+        text: `追加しました。`,
+      };
+    }
+    case 'deleteavailabledate': {
+      memberDB.push(`/${userId}/member/${memberId}/availabledate/${event.message.text}`);
+      contextDB.delete(`/${userId}/context`);
+      return {
+        type: 'text',
+        text: `削除しました。`,
+      };
     }
     default:
       break;
@@ -432,15 +475,15 @@ export const textEvent = async (event, client) => {
               type: 'action',
               action: {
                 type: 'message',
+                label: '追加',
                 text: 'メンバーの追加',
-                label: 'メンバーの追加',
               },
             },
             {
               type: 'action',
               action: {
                 type: 'message',
-                label: 'メンバーの削除',
+                label: '削除',
                 text: 'メンバーの削除',
               },
             },
@@ -448,7 +491,7 @@ export const textEvent = async (event, client) => {
               type: 'action',
               action: {
                 type: 'message',
-                label: 'メンバーの編集',
+                label: '編集',
                 text: 'メンバーの編集',
               },
             },
@@ -456,12 +499,50 @@ export const textEvent = async (event, client) => {
               type: 'action',
               action: {
                 type: 'message',
-                label: 'メンバーの一覧',
+                label: '一覧',
                 text: 'メンバーの一覧',
+              },
+            },
+            {
+              type: 'action',
+              action: {
+                type: 'message',
+                label: '参加可能日設定',
+                text: 'メンバーの参加可能日設定',
               },
             },
           ],
         },
+      };
+      break;
+    }
+
+    case 'メンバーの参加可能日設定': {
+      contextDB.push(`/${userId}/context`, 'getMemberId');
+      // 返信するメッセージを作成
+      message = {
+        type: 'text',
+        text: '参加可能日を設定するメンバーのIDを入力してください。',
+      };
+      break;
+    }
+
+    case '参加可能日追加': {
+      contextDB.push(`/${userId}/context`, 'addavailabledate');
+      // 返信するメッセージを作成
+      message = {
+        type: 'text',
+        text: '追加する参加可能日を入力してください。',
+      };
+      break;
+    }
+
+    case '参加可能日削除': {
+      contextDB.push(`/${userId}/context`, 'deleteavailabledate');
+      // 返信するメッセージを作成
+      message = {
+        type: 'text',
+        text: '削除する参加可能日を入力してください。',
       };
       break;
     }
