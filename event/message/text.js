@@ -1,13 +1,20 @@
 import { JsonDB } from 'node-json-db';
 import { Config } from 'node-json-db/dist/lib/JsonDBConfig.js';
 
+const eventDB = new JsonDB(new Config('db/eventMessageDB.json', true, true, '/'));
 const memberDB = new JsonDB(new Config('db/memberDB.json', true, true, '/'));
 const contextDB = new JsonDB(new Config('db/contextDB.json', true, true, '/'));
 const messageDB = new JsonDB(new Config('db/messageDB.json', true, true, '/'));
-const eventDB = new JsonDB(new Config('db/eventMessageDB.json', true, true, '/'));
-let count = 0;
+
+let count = 1;
 let eventName;
 let eventDate;
+let memberName;
+let memberId;
+
+const isGroup = (event) => {
+  return event.source.type == "group";
+}
 
 const isGroup = (event) => event.source.type === 'group';
 
@@ -112,34 +119,70 @@ export const textEvent = async (event, client) => {
         text: `${event.message.text}というメッセージをdbに追加しました`,
       };
     }
-    case 'addMember': {
-      // すでに保存されているメモがDBにある場合
-      if (memberData) {
-        // // すでにあるmemoカラムに新しいメッセージを追加する
-        // memberData.push({ id: `${event.message.text}`, name: `${event.message.text}`, position: `${event.message.text}` });
-        // // メッセージをDBへ保存
-        // memberDB.push(`/${userId}/member/${count++}`, memberData);
-        memberDB.push(`/${userId}/member/${count++}`, `${event.message.text}`, false);
-      } else {
-        // memoカラムを作成してDBに保存
-        memberDB.push(`/${userId}/member/${count++}`, { id: 1, name: `${event.message.text}` }, false);
-        // memberDB.push(`/${userId}/member/`, [`\n${event.message.text} さん`]);
-      }
+    case 'addMemberName': {
+      memberName = `${event.message.text}`;
+      contextDB.push(`/${userId}/context`, 'addMemberPosition');
+      return {
+        type: 'text',
+        text: `追加するメンバーの役職を入力してください。`,
+      };
+    }
+    case 'addMemberPosition': {
+      memberDB.push(`/${userId}/member/${count}`, { id: `${count++}`, name: `${memberName}`, Position: `${event.message.text}` }, false);
       // contextをDBから削除
       contextDB.delete(`/${userId}/context`);
       // 返信するメッセージをreturnする
       return {
         type: 'text',
-        text: `${event.message.text}さんをメンバーに追加しました。`,
+        text: `${memberName} さんをメンバーに追加しました。`,
+      };
+    }
+    case 'editMember': {
+      memberId = `${event.message.text}`;
+      contextDB.push(`/${userId}/context`, 'editMemberName');
+      return {
+        type: 'text',
+        text: `新しい名前を入力してください。`,
+      };
+    }
+    case 'editMemberName': {
+      memberName = `${event.message.text}`;
+      contextDB.push(`/${userId}/context`, 'editMemberPosition');
+      return {
+        type: 'text',
+        text: `新しい役職を入力してください。`,
+      };
+    }
+    case 'editMemberPosition': {
+      memberDB.push(`/${userId}/member/${memberId}`, { name: `${memberName}`, Position: `${event.message.text}` }, false);
+      // contextをDBから削除
+      contextDB.delete(`/${userId}/context`);
+      // 返信するメッセージをreturnする
+      return {
+        type: 'text',
+        text: `${memberName} さんに変更しました。`,
       };
     }
     case 'deleteMember': {
-      memberDB.delete(`/${userId}/member/${event.message.text}`);
-      contextDB.delete(`/${userId}/context`);
-      return {
-        type: 'text',
-        text: `${event.message.text}さんをメンバーから削除しました。`,
-      };
+      let deleteMemberName;
+      try {
+        deleteMemberName = memberDB.getData(`/${userId}/member/${event.message.text}/name`);
+      } catch (_) {
+        deleteMemberName = undefined;
+      }
+      if (deleteMemberName) {
+        memberDB.delete(`/${userId}/member/${event.message.text}`);
+        contextDB.delete(`/${userId}/context`);
+        return {
+          type: 'text',
+          text: `${deleteMemberName}さんをメンバーから削除しました。`,
+        };
+      } else {
+        return {
+          type: 'text',
+          text: `IDが${event.message.text}のメンバーは存在しません。`,
+        };
+      }
     }
     default:
       break;
@@ -412,23 +455,83 @@ export const textEvent = async (event, client) => {
     }
 
     case 'メンバーの追加': {
-      contextDB.push(`/${userId}/context`, 'addMember');
+      contextDB.push(`/${userId}/context`, 'addMemberName');
       // 返信するメッセージを作成
       message = {
         type: 'text',
-        text: '追加するメンバーの名前を入力してください',
+        text: '追加するメンバーの名前を入力してください。',
       };
       break;
     }
 
-    case 'メンバーの削除': {
-      contextDB.push(`/${userId}/context`, 'deleteMember');
-      // 返信するメッセージを作成
-      message = {
-        type: 'text',
-        text: '削除するメンバーの名前を入力してください',
-      };
+    case 'メンバーの編集': {
+      if (memberData) {
+        contextDB.push(`/${userId}/context`, 'editMember');
+        // 返信するメッセージを作成
+        let id;
+        let member;
+        let Data;
+        for (let i = 1; i <= 3; i++) {
+          try {
+            id = memberDB.getData(`/${userId}/member/${i}/id`);
+            member = memberDB.getData(`/${userId}/member/${i}/name`);
+          } catch (_) {
+            member = undefined;
+          }
+          if (member) {
+            if (i == 1) {
+              Data = "ID:" + id + " " + member + " さん";
+            } else {
+              Data += "\n" + "ID:" + id + " " + member + " さん";
+            }
+          }
+        }
+        message = {
+          type: 'text',
+          text: `編集するメンバーのIDを入力してください。\n${Data}`,
+        };
+      } else {
+        message = {
+          type: 'text',
+          text: 'メンバーが存在しません',
+        };
+      }
       break;
+    }
+
+    case 'メンバーの削除': {
+      if (memberData) {
+        contextDB.push(`/${userId}/context`, 'deleteMember');
+        // 返信するメッセージを作成
+        let id;
+        let member;
+        let Data;
+        for (let i = 1; i <= 3; i++) {
+          try {
+            id = memberDB.getData(`/${userId}/member/${i}/id`);
+            member = memberDB.getData(`/${userId}/member/${i}/name`);
+          } catch (_) {
+            member = undefined;
+          }
+          if (member) {
+            if (i == 1) {
+              Data = "ID:" + id + " " + member + " さん";
+            } else {
+              Data += "\n" + "ID:" + id + " " + member + " さん";
+            }
+          }
+        }
+        message = {
+          type: 'text',
+          text: `削除するメンバーのIDを入力してください\n${Data}`,
+        };
+        break;
+      } else {
+        message = {
+          type: 'text',
+          text: 'メンバーが存在しません',
+        };
+      }
     }
 
     case '削除': {
@@ -440,19 +543,21 @@ export const textEvent = async (event, client) => {
     case 'メンバーの一覧': {
       if (memberData) {
         // 返信するメッセージを作成
+        let id;
         let member;
         let Data;
         for (let i = 1; i <= 3; i++) {
           try {
-            member = memberDB.getData(`/${userId}/member/${i}/id`);
+            id = memberDB.getData(`/${userId}/member/${i}/id`);
+            member = memberDB.getData(`/${userId}/member/${i}/name`);
           } catch (_) {
             member = undefined;
           }
           if (member) {
             if (i == 1) {
-              Data = `${member} さん`;
+              Data = "ID:" + id + " " + member + " さん";
             } else {
-              Data += `\n${member} さん`;
+              Data += "\n" + "ID:" + id + " " + member + " さん";
             }
           }
         }
