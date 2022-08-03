@@ -5,7 +5,7 @@ const memberDB = new JsonDB(new Config('db/memberDB.json', true, true, '/'));
 const contextDB = new JsonDB(new Config('db/contextDB.json', true, true, '/'));
 // const messageDB = new JsonDB(new Config('db/messageDB.json', true, true, '/'));
 const eventDB = new JsonDB(new Config('db/eventMessageDB.json', true, true, '/'));
-let count = 0;
+let count = 1;
 let eventName;
 let eventDate;
 
