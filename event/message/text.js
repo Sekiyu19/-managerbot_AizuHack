@@ -21,7 +21,7 @@ export const textEvent = async (event, client) => {
   // テキストメッセージの処理をする関数
   let contextData;
   let memberData;
-  let eventMemoData
+  let eventMemoData;
   try {
     contextData = contextDB.getData(`/${userId}/context`);
   } catch (_) {
