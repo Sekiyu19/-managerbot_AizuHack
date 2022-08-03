@@ -216,7 +216,7 @@ export const textEvent = async (event, client) => {
       contextDB.delete(`/${userId}/context`);
       return {
         type: 'text',
-        text: `追加しました。`,
+        text: `参加可能日に${event.message.text}日を追加しました。`,
       };
     }
     case 'deleteavailabledate': {
@@ -224,7 +224,7 @@ export const textEvent = async (event, client) => {
       contextDB.delete(`/${userId}/context`);
       return {
         type: 'text',
-        text: `削除しました。`,
+        text: `参加可能日から${event.message.text}を削除しました。`,
       };
     }
     default:
