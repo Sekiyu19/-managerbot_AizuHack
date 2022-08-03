@@ -506,12 +506,38 @@ export const textEvent = async (event, client) => {
     }
 
     case 'メンバーの参加可能日設定': {
-      contextDB.push(`/${userId}/context`, 'getMemberId');
-      // 返信するメッセージを作成
-      message = {
-        type: 'text',
-        text: '参加可能日を設定するメンバーのIDを入力してください。',
-      };
+      if (memberData) {
+        // 返信するメッセージを作成
+        let id;
+        let member;
+        let Data;
+        for (let i = 1; i <= 3; i++) {
+          try {
+            id = memberDB.getData(`/${userId}/member/${i}/id`);
+            member = memberDB.getData(`/${userId}/member/${i}/name`);
+          } catch (_) {
+            member = undefined;
+          }
+          if (member) {
+            if (i == 1) {
+              Data = "ID:" + id + " " + member + " さん";
+            } else {
+              Data += "\n" + "ID:" + id + " " + member + " さん";
+            }
+          }
+        }
+        contextDB.push(`/${userId}/context`, 'getMemberId');
+        message = {
+          type: 'text',
+          text: `参加可能日を設定するメンバーのIDを入力してください。\n${Data}`,
+        };
+      } else {
+        // 返信するメッセージを作成
+        message = {
+          type: 'text',
+          text: 'メンバーが存在しません',
+        };
+      }
       break;
     }
 
