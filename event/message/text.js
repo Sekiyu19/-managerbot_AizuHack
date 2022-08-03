@@ -9,7 +9,7 @@ let count = 0;
 let eventName;
 let eventDate;
 
-const isGroup = (event) => event.source.type == 'group';
+const isGroup = (event) => event.source.type === 'group';
 
 // テキストメッセージの処理をする関数
 export const textEvent = async (event, client) => {
@@ -319,7 +319,7 @@ export const textEvent = async (event, client) => {
           } catch (_) {
             eventDB.push(`/${userId}/event/${i}`, '休み');
           }
-          if (i == 1) {
+          if (i === 1) {
             Data = eventDB.getData(`/${userId}/event/${i}`);
           } else {
             Data += `\n${eventDB.getData(`/${userId}/event/${i}`)}`;
