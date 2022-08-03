@@ -3,7 +3,7 @@ import { Config } from 'node-json-db/dist/lib/JsonDBConfig.js';
 
 const memberDB = new JsonDB(new Config('db/memberDB.json', true, true, '/'));
 const contextDB = new JsonDB(new Config('db/contextDB.json', true, true, '/'));
-const messageDB = new JsonDB(new Config('db/messageDB.json', true, true, '/'));
+// const messageDB = new JsonDB(new Config('db/messageDB.json', true, true, '/'));
 const eventDB = new JsonDB(new Config('db/eventMessageDB.json', true, true, '/'));
 let count = 0;
 let eventName;
@@ -19,20 +19,31 @@ export const textEvent = async (event, client) => {
     userId = event.source.groupId;
   }
   // テキストメッセージの処理をする関数
-  let eventContextData;
-  let eventMemoData;
+  let contextData;
+  let memoData;
+  let memberData;
   try {
-    eventContextData = contextDB.getData(`/${userId}/context`);
+    contextData = contextDB.getData(`/${userId}/context`);
   } catch (_) {
-    eventContextData = undefined;
+    contextData = undefined;
   }
+  // try {
+  //   memoData = eventDB.getData(`/${userId}/event/`);
+  // } catch (_) {
+  //   memoData = undefined;
+  // }
+  // try {
+  //   memoData = messageDB.getData(`/${userId}/memo`);
+  // } catch (_) {
+  //   memoData = undefined;
+  // }
   try {
-    eventMemoData = eventDB.getData(`/${userId}/event/`);
+    memberData = memberDB.getData(`/${userId}/member`);
   } catch (_) {
-    eventMemoData = undefined;
+    memberData = undefined;
   }
   // contextDataで条件分岐
-  switch (eventContextData) {
+  switch (contextData) {
     // もしそのユーザーのcontextがmemoModeだったら
     case 'eventMemoMode': {
       // メッセージをDBへ保存
@@ -43,7 +54,7 @@ export const textEvent = async (event, client) => {
       contextDB.push(`/${userId}/context`, 'eventMemoMode2');
       return {
         type: 'text',
-        text: `${event.message.text}"日に何をひらきますか?`,
+        text: `${event.message.text}"日の予定を入力してください`,
       };
     }
     case 'eventMemoMode2': {
@@ -64,52 +75,36 @@ export const textEvent = async (event, client) => {
       contextDB.delete(`/${userId}/context`);
       return {
         type: 'text',
-        text: `${event.message.text}日の予定を削除しました`,
+        text: `${event.message.text}日のイベントを削除しました`,
       };
     }
-    default:
-      break;
-  }
-  // DBからユーザーのデータを取得
-  let contextData;
-  let memoData;
-  let memberData;
-  try {
-    contextData = contextDB.getData(`/${userId}/context`);
-  } catch (_) {
-    contextData = undefined;
-  }
-  try {
-    memoData = messageDB.getData(`/${userId}/memo`);
-  } catch (_) {
-    memoData = undefined;
-  }
-  try {
-    memberData = memberDB.getData(`/${userId}/member`);
-  } catch (_) {
-    memberData = undefined;
-  }
-
-  // contextDataで条件分岐
-  switch (contextData) {
-    // もしそのユーザーのcontextがmemoModeだったら
-    case 'memoMode': {
-      // すでに保存されているメモがDBにある場合
-      if (memoData) {
-        // すでにあるmemoカラムに新しいメッセージを追加する
-        memoData.push(`\n${event.message.text}`);
-        // メッセージをDBへ保存
-        messageDB.push(`/${userId}/memo`, memoData);
-      } else {
-        // memoカラムを作成してDBに保存
-        messageDB.push(`/${userId}/memo`, [event.message.text]);
-      }
-      // contextをDBから削除
+    case 'eventReMode': {
+      eventDate = event.message.text;
+      eventDB.delete(`/${userId}/event/${event.message.text}`);
       contextDB.delete(`/${userId}/context`);
-      // 返信するメッセージをreturnする
+      contextDB.push(`/${userId}/context`, 'eventMemoMode2');
       return {
         type: 'text',
-        text: `${event.message.text}というメッセージをdbに追加しました`,
+        text: `${event.message.text}日のイベントを入力してください`,
+      };
+    }
+    case 'eventInfoMode': {
+      let eventInfo = null;
+      let activeMember;
+      eventDate = event.message.text;
+      eventName = eventDB.getData(`/${userId}/event/${event.message.text}/eventName`);
+      contextDB.delete(`/${userId}/context`);
+      const memberNum = 30;
+      for (let i = 1; i < memberNum; i++) {
+        const dateTmp = memberDB.getData(`/${userId}/member/${i}/date`);
+        for (let j = 1; j < dateTmp.length; j++) {
+          if (dateTmp === eventDate) { activeMember.push(memberDB.getData(`/${userId}/member/${i}/name`)); }
+        }
+      }
+      eventInfo = `${eventDate}日: 「${eventName}」\n${activeMember}`;
+      return {
+        type: 'text',
+        text: eventInfo,
       };
     }
     case 'addMember': {
@@ -293,8 +288,8 @@ export const textEvent = async (event, client) => {
               type: 'action',
               action: {
                 type: 'message',
-                text: 'イベントの通知',
-                label: 'イベントの通知',
+                text: 'イベントの詳細',
+                label: 'イベントの詳細',
               },
             },
           ],
@@ -317,12 +312,12 @@ export const textEvent = async (event, client) => {
           try {
             eventTmp = eventDB.getData(`/${userId}/event/${i}/eventName`);
           } catch (_) {
-            eventDB.push(`/${userId}/event/${i}`, '休み');
+            eventDB.push(`/${userId}/event/${i}/`, '休み');
           }
           if (i === 1) {
-            Data = eventDB.getData(`/${userId}/event/${i}`);
+            Data = `${i}:${eventDB.getData(`/${userId}/event/${i}/eventName`)}`;
           } else {
-            Data += `\n${eventDB.getData(`/${userId}/event/${i}`)}`;
+            Data += `\n${i}:${eventDB.getData(`/${userId}/event/${i}/eventName`)}`;
           }
         }
         message = {
@@ -362,6 +357,22 @@ export const textEvent = async (event, client) => {
       message = {
         type: 'text',
         text: 'すべてのイベントを削除しました',
+      };
+      break;
+    }
+    case 'イベントの編集': {
+      contextDB.push(`/${userId}/context`, 'eventReMode');
+      message = {
+        type: 'text',
+        text: '何日のイベントを編集しますか?',
+      };
+      break;
+    }
+    case 'イベントの詳細': {
+      contextDB.push(`/${userId}/context`, 'eventInfoMode');
+      message = {
+        type: 'text',
+        text: '何日のイベントの詳細を表示しますか?',
       };
       break;
     }
@@ -473,9 +484,10 @@ export const textEvent = async (event, client) => {
     // 'こんにちは'というメッセージが送られてきた時
     case 'こんにちは': {
       // 返信するメッセージを作成
+      console.log(Date());
       message = {
         type: 'text',
-        text: 'Hello, world',
+        text: `Hello, world ${Date()}`,
       };
       break;
     }
