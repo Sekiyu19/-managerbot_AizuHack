@@ -516,37 +516,6 @@ export const textEvent = async (event, client) => {
       break;
     }
 
-    case 'イベント候補日': {
-      let availabledate = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-      for (let i = 1; i <= Object.keys(memberData).length; i++) {
-        for (let j = 1; j <= 31; j++) {
-          let existFlg;
-          try {
-            existFlg = memberDB.getData(`/${userId}/member/${i}/availabledate/${j}`);
-          } catch (_) {
-            existFlg = undefined;
-          }
-          if (existFlg) {
-            availabledate[j]++;
-          }
-        }
-      }
-      let countDate = 0;
-      let date;
-      for (let i = 1; i <= 31; i++) {
-        if (countDate < availabledate[i]) {
-          countDate = availabledate[i];
-          date = i;
-        }
-      }
-      // 返信するメッセージを作成
-      message = {
-        type: 'text',
-        text: `${date}`,
-      };
-      break;
-    }
-
     case 'メンバーの追加': {
       contextDB.push(`/${userId}/context`, 'addMemberName');
       // 返信するメッセージを作成
