@@ -532,17 +532,21 @@ export const textEvent = async (event, client) => {
         }
       }
       let countDate = 0;
-      let date;
+      let date = undefined;
       for (let i = 1; i <= 31; i++) {
         if (countDate < availabledate[i]) {
           countDate = availabledate[i];
-          date = i;
+        }
+      }
+      for (let i = 1; i <= 31; i++) {
+        if (countDate === availabledate[i]) {
+          date ? date += `\n${i}日` : date = `${i}日`;
         }
       }
       // 返信するメッセージを作成
       message = {
         type: 'text',
-        text: `${date}`,
+        text: date ? `イベント候補日\n${date}` : `参加可能日が登録されていません。`,
       };
       break;
     }
