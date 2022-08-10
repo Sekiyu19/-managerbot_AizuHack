@@ -546,7 +546,7 @@ export const textEvent = async (event, client) => {
       // 返信するメッセージを作成
       message = {
         type: 'text',
-        text: date ? `${date}` : `参加可能日が登録されていません。`,
+        text: date ? `イベント候補日\n${date}` : `参加可能日が登録されていません。`,
       };
       break;
     }
