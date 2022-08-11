@@ -291,9 +291,9 @@ export const textEvent = async (event, client) => {
       } catch (_) {
         deleteMemberName = undefined;
       }
+      contextDB.delete(`/${userId}/context`);
       if (deleteMemberName) {
         memberDB.delete(`/${userId}/member/${event.message.text}`);
-        contextDB.delete(`/${userId}/context`);
         return {
           type: 'text',
           text: `${deleteMemberName}さんをメンバーから削除しました。`,
@@ -307,9 +307,51 @@ export const textEvent = async (event, client) => {
     case 'getMemberId': {
       memberId = `${event.message.text}`;
       contextDB.delete(`/${userId}/context`);
-      message = {
+      let member;
+      try {
+        member = memberDB.getData(`/${userId}/member/${event.message.text}`);
+      } catch (_) {
+        member = undefined;
+      }
+      if (member) {
+        message = {
+          type: 'text',
+          text: 'メンバーの参加可能日の設定を行います。',
+          quickReply: {
+            items: [
+              {
+                type: 'action',
+                action: {
+                  type: 'message',
+                  label: '追加',
+                  text: '参加可能日追加',
+                },
+              },
+              {
+                type: 'action',
+                action: {
+                  type: 'message',
+                  label: '削除',
+                  text: '参加可能日削除',
+                },
+              },
+            ],
+          },
+        };
+      } else {
+        message = {
+          type: 'text',
+          text: `IDが${memberId}のメンバーは存在しません。`,
+        };
+      }
+      return message;
+    }
+    case 'addavailabledate': {
+      memberDB.push(`/${userId}/member/${memberId}/availabledate/${event.message.text}`, { date: `${event.message.text}` }, false);
+      contextDB.delete(`/${userId}/context`);
+      return {
         type: 'text',
-        text: 'メンバーの参加可能日の設定を行います。',
+        text: `参加可能日に${event.message.text}日を追加しました。`,
         quickReply: {
           items: [
             {
@@ -330,15 +372,6 @@ export const textEvent = async (event, client) => {
             },
           ],
         },
-      };
-      return message;
-    }
-    case 'addavailabledate': {
-      memberDB.push(`/${userId}/member/${memberId}/availabledate/${event.message.text}`, { date: `${event.message.text}` }, false);
-      contextDB.delete(`/${userId}/context`);
-      return {
-        type: 'text',
-        text: `参加可能日に${event.message.text}日を追加しました。`,
       };
     }
     case 'deleteavailabledate': {
@@ -363,7 +396,7 @@ export const textEvent = async (event, client) => {
         altText: 'ボタンテンプレート',
         template: {
           type: 'buttons',
-          thumbnailImageUrl: 'https://shinbunbun.info/images/photos/7.jpeg',
+          thumbnailImageUrl: 'https://1.bp.blogspot.com/-4CUcc9q8aFQ/X7zMWWGRmpI/AAAAAAABcaE/nfdSqmkx9RQL0ZoBisukxdD-qdjJS28iQCNcBGAsYHQ/s830/calender_schedule_half.png',
           imageAspectRatio: 'rectangle',
           imageSize: 'cover',
           imageBackgroundColor: '#FFFFFF',
