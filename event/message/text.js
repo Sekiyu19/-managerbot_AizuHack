@@ -1,7 +1,10 @@
 import { JsonDB } from 'node-json-db';
 import { Config } from 'node-json-db/dist/lib/JsonDBConfig.js';
+import { createRequire } from 'module';
 
-const eventDB = new JsonDB(new Config('db/eventMessageDB.json', true, true, '/'));
+const require = createRequire(import.meta.url);
+
+const eventDB = new JsonDB(new Config('db/eventDB.json', true, true, '/'));
 const memberDB = new JsonDB(new Config('db/memberDB.json', true, true, '/'));
 const contextDB = new JsonDB(new Config('db/contextDB.json', true, true, '/'));
 let count = 1;
@@ -11,9 +14,9 @@ let eventDate;
 let memberName;
 let memberId;
 
-const isGroup = (event) => {
-  return event.source.type === "group";
-}
+const cron = require('node-cron');
+
+const isGroup = (event) => event.source.type === 'group';
 
 // テキストメッセージの処理をする関数
 export const textEvent = async (event, client) => {
@@ -32,7 +35,7 @@ export const textEvent = async (event, client) => {
     contextData = undefined;
   }
   try {
-    eventMemoData = eventDB.getData(`/${userId}/event/`);
+    eventMemoData = eventDB.getData(`/${userId}/event/1/eventName`);
   } catch (_) {
     eventMemoData = undefined;
   }
@@ -41,6 +44,79 @@ export const textEvent = async (event, client) => {
   } catch (_) {
     memberData = undefined;
   }
+  // 定期実行
+  // const now = new Date();
+  // let hour = now.getHours();
+  // let min = now.getMinutes() + 1;
+  // if (min === 59) {
+  //   min = 0;
+  //   hour++;
+  // }
+  // cron.schedule(`00 ${min} ${hour} * * *`, () => {
+  cron.schedule('0 0 * * * *', () => {
+    const date = new Date();
+    const dateA = date.toDateString(2);
+    const dateB = dateA.split(' ');
+    let eventdateTmp;
+    let countA = 0;
+    for (let j = 1; j <= 31; j++) {
+      try {
+        eventdateTmp = eventDB.getData(`/${userId}/event/${j}/eventDate`);
+        if (eventdateTmp === dateB[2]) {
+          countA = 1;
+          console.log(countA);
+          break;
+        }
+        // console.log(eventdateTmp);
+        // console.log(dateB[2]);
+        // console.log(date.toString);
+      } catch (_) {
+        // console.log('a');
+      }
+    }
+    if (countA === 1) {
+      // contextDB.push(`/${userId}/context`, 'eventInfomode2');
+      let eventInfo = null;
+      let availabledateTmp = null;
+      let activeMember;
+      // eventDate = date[2];
+      eventName = eventDB.getData(`/${userId}/event/${dateB[2]}/eventName`);
+      eventInfo = `${dateB[2]}日: 「${eventName}」`;
+      const memberNum = 10;
+      for (let i = 1; i <= memberNum; i++) {
+        let countC = 0;
+        for (let j = 1; j <= 31; j++) {
+          try {
+            availabledateTmp = memberDB.getData(`/${userId}/member/${i}/availabledate/${j}/date`);// 問題児
+            if (availabledateTmp === dateB[2]) { countC = 1; }
+          } catch (_) {
+            // memberDB.push(`/${userId}/member/${i}/availabledate/${j}/date`, null);
+          }
+        }
+        // console.log('aaa');
+        try {
+          if (countC === 1) {
+            activeMember = `\n  o${memberDB.getData(`/${userId}/member/${i}/name`)}(${memberDB.getData(`/${userId}/member/${i}/Position`)})`;
+            eventInfo += (activeMember);
+          } else {
+            activeMember = `\n  x${memberDB.getData(`/${userId}/member/${i}/name`)}(${memberDB.getData(`/${userId}/member/${i}/Position`)})`;
+            eventInfo += (activeMember);
+          }
+        } catch (_) {
+          // undef
+        }
+      }
+      console.log(eventInfo);
+      // return {
+      //   type: 'text',
+      //   text: eventInfo,
+      // };
+      message = {
+        type: 'text',
+        text: eventInfo,
+      };
+    }
+  });
   // contextDataで条件分岐
   switch (contextData) {
     // もしそのユーザーのcontextがmemoModeだったら
@@ -63,10 +139,11 @@ export const textEvent = async (event, client) => {
       eventDB.push(`/${userId}/event/${eventDate}`, { eventName, eventDate });
       // contextをDBから削除
       contextDB.delete(`/${userId}/context`);
+
       // 返信するメッセージをreturnする
       return {
         type: 'text',
-        text: `"${eventDate}"日に${eventName}を追加しました`,
+        text: `${eventDate}日に${eventName}を追加しました`,
       };
     }
     case 'eventRemMode': {
@@ -89,17 +166,75 @@ export const textEvent = async (event, client) => {
     }
     case 'eventInfoMode': {
       let eventInfo = null;
+      let availabledateTmp = null;
       let activeMember;
       eventDate = event.message.text;
       eventName = eventDB.getData(`/${userId}/event/${event.message.text}/eventName`);
-      contextDB.delete(`/${userId}/context`);
-      const memberNum = 30;
-      for (let i = 1; i < memberNum; i++) {
-        for (let j = 1; j < dateNum; j++) {
-          if (memberDB.getData(memberDB.getData(`/${userId}/member/${i}/${j}`)) === eventDate) { activeMember.push(memberDB.getData(`/${userId}/member/${i}/name`)); }
+      eventInfo = `${eventDate}日: 「${eventName}」`;
+      const memberNum = 10;
+      for (let i = 1; i <= memberNum; i++) {
+        let countA = 0;
+        for (let j = 1; j <= 31; j++) {
+          try {
+            availabledateTmp = memberDB.getData(`/${userId}/member/${i}/availabledate/${j}/date`);// 問題児
+            if (availabledateTmp === eventDate) { countA = 1; }
+          } catch (_) {
+            // memberDB.push(`/${userId}/member/${i}/availabledate/${j}/date`, null);
+          }
+        }
+        try {
+          if (countA === 1) {
+            activeMember = `\n  o${memberDB.getData(`/${userId}/member/${i}/name`)}(${memberDB.getData(`/${userId}/member/${i}/Position`)})`;
+            eventInfo += (activeMember);
+          } else {
+            activeMember = `\n  x${memberDB.getData(`/${userId}/member/${i}/name`)}(${memberDB.getData(`/${userId}/member/${i}/Position`)})`;
+            eventInfo += (activeMember);
+          }
+        } catch (_) {
+          // undef
         }
       }
-      eventInfo = `${eventDate}日: 「${eventName}」\n${activeMember}`;
+      contextDB.delete(`/${userId}/context`);
+      return {
+        type: 'text',
+        text: eventInfo,
+      };
+    }
+    case 'eventInfomode2': {
+      const dateB = new Date();
+      const dateA = dateB.toDateString();
+      const date = dateA.split(' ');
+      let eventInfo = null;
+      let availabledateTmp = null;
+      let activeMember;
+      // eventDate = date[2];
+      eventName = eventDB.getData(`/${userId}/event/${date[2]}/eventName`);
+      eventInfo = `${date[2]}日: 「${eventName}」`;
+      const memberNum = 10;
+      for (let i = 1; i <= memberNum; i++) {
+        let countA = 0;
+        for (let j = 1; j <= 31; j++) {
+          try {
+            availabledateTmp = memberDB.getData(`/${userId}/member/${i}/availabledate/${j}/date`);// 問題児
+            if (availabledateTmp === date[2]) { countA = 1; }
+          } catch (_) {
+            // memberDB.push(`/${userId}/member/${i}/availabledate/${j}/date`, null);
+          }
+        }
+        // console.log('aaa');
+        try {
+          if (countA === 1) {
+            activeMember = `\n  o${memberDB.getData(`/${userId}/member/${i}/name`)}(${memberDB.getData(`/${userId}/member/${i}/Position`)})`;
+            eventInfo += (activeMember);
+          } else {
+            activeMember = `\n  x${memberDB.getData(`/${userId}/member/${i}/name`)}(${memberDB.getData(`/${userId}/member/${i}/Position`)})`;
+            eventInfo += (activeMember);
+          }
+        } catch (_) {
+          // undef
+        }
+      }
+      contextDB.delete(`/${userId}/context`);
       return {
         type: 'text',
         text: eventInfo,
@@ -110,7 +245,7 @@ export const textEvent = async (event, client) => {
       contextDB.push(`/${userId}/context`, 'addMemberPosition');
       return {
         type: 'text',
-        text: `追加するメンバーの役職を入力してください。`,
+        text: '追加するメンバーの役職を入力してください。',
       };
     }
     case 'addMemberPosition': {
@@ -128,7 +263,7 @@ export const textEvent = async (event, client) => {
       contextDB.push(`/${userId}/context`, 'editMemberName');
       return {
         type: 'text',
-        text: `新しい名前を入力してください。`,
+        text: '新しい名前を入力してください。',
       };
     }
     case 'editMemberName': {
@@ -136,7 +271,7 @@ export const textEvent = async (event, client) => {
       contextDB.push(`/${userId}/context`, 'editMemberPosition');
       return {
         type: 'text',
-        text: `新しい役職を入力してください。`,
+        text: '新しい役職を入力してください。',
       };
     }
     case 'editMemberPosition': {
@@ -163,12 +298,11 @@ export const textEvent = async (event, client) => {
           type: 'text',
           text: `${deleteMemberName}さんをメンバーから削除しました。`,
         };
-      } else {
-        return {
-          type: 'text',
-          text: `IDが${event.message.text}のメンバーは存在しません。`,
-        };
       }
+      return {
+        type: 'text',
+        text: `IDが${event.message.text}のメンバーは存在しません。`,
+      };
     }
     case 'getMemberId': {
       memberId = `${event.message.text}`;
@@ -342,7 +476,8 @@ export const textEvent = async (event, client) => {
           try {
             eventTmp = eventDB.getData(`/${userId}/event/${i}/eventName`);
           } catch (_) {
-            eventDB.push(`/${userId}/event/${i}/`, '休み');
+            eventDB.push(`/${userId}/event/${i}/eventName`, '休み');
+            eventDB.push(`/${userId}/event/${i}/eventdate`, null);
           }
           if (i === 1) {
             Data = `${i}:${eventDB.getData(`/${userId}/event/${i}/eventName`)}`;
@@ -475,9 +610,9 @@ export const textEvent = async (event, client) => {
           }
           if (member) {
             if (i == 1) {
-              Data = "ID:" + id + " " + member + " さん";
+              Data = `ID:${id} ${member} さん`;
             } else {
-              Data += "\n" + "ID:" + id + " " + member + " さん";
+              Data += '\n' + `ID:${id} ${member} さん`;
             }
           }
         }
@@ -577,9 +712,9 @@ export const textEvent = async (event, client) => {
           }
           if (member) {
             if (i == 1) {
-              Data = "ID:" + id + " " + member + " さん";
+              Data = `ID:${id} ${member} さん`;
             } else {
-              Data += "\n" + "ID:" + id + " " + member + " さん";
+              Data += '\n' + `ID:${id} ${member} さん`;
             }
           }
         }
@@ -612,9 +747,9 @@ export const textEvent = async (event, client) => {
           }
           if (member) {
             if (i == 1) {
-              Data = "ID:" + id + " " + member + " さん";
+              Data = `ID:${id} ${member} さん`;
             } else {
-              Data += "\n" + "ID:" + id + " " + member + " さん";
+              Data += '\n' + `ID:${id} ${member} さん`;
             }
           }
         }
@@ -652,9 +787,9 @@ export const textEvent = async (event, client) => {
           }
           if (member) {
             if (i == 1) {
-              Data = "ID:" + id + " " + member + " さん";
+              Data = `ID:${id} ${member} さん`;
             } else {
-              Data += "\n" + "ID:" + id + " " + member + " さん";
+              Data += '\n' + `ID:${id} ${member} さん`;
             }
           }
         }
@@ -675,11 +810,13 @@ export const textEvent = async (event, client) => {
     // 'こんにちは'というメッセージが送られてきた時
     case 'こんにちは': {
       // 返信するメッセージを作成
-      console.log(Date());
+      //const d = Date();
+      //console.log(Date());
       message = {
         type: 'text',
         text: `Hello, world ${Date()}`,
       };
+      // contextDB.push(`/${userId}/context`, 'eventInfomode2');
       break;
     }
     // '複数メッセージ'というメッセージが送られてきた時
